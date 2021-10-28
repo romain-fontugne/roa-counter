@@ -4,27 +4,46 @@ from requests_cache import CachedSession
 
 CACHE_EXPIRATION_SECS = 3600*24*356
 YEAR_RANGE = range(2018, 2022)
+MARKERS = ["o", "s", "d", "+", "*"]
 
-URLS = {
-        'AFRINIC': 'https://ftp.ripe.net/ripe/rpki/afrinic.tal/',
-        'APNIC': 'https://ftp.ripe.net/ripe/rpki/apnic.tal/',
-        'ARIN': 'https://ftp.ripe.net/ripe/rpki/arin.tal/',
-        'LACNIC': 'https://ftp.ripe.net/ripe/rpki/lacnic.tal/',
-        'RIPE': 'https://ftp.ripe.net/ripe/rpki/ripencc.tal/',
+RIRS = {
+        'AFRINIC': {
+            'url': 'https://ftp.ripe.net/ripe/rpki/afrinic.tal/',
+            'marker': 'o',
+            },
+        'APNIC': {
+            'url': 'https://ftp.ripe.net/ripe/rpki/apnic.tal/',
+            'marker': 's',
+            },
+        'ARIN': {
+            'url': 'https://ftp.ripe.net/ripe/rpki/arin.tal/',
+            'marker': 'd'
+            },
+        'LACNIC': {
+            'url': 'https://ftp.ripe.net/ripe/rpki/lacnic.tal/',
+            'marker': '+',
+            },
+        'RIPE': {
+            'url': 'https://ftp.ripe.net/ripe/rpki/ripencc.tal/',
+            'marker': '*',
+            }
         }
 
 session = CachedSession(ExpirationTime = CACHE_EXPIRATION_SECS)
-plt.figure()
+plt.figure(figsize=(7,4))
 
-for rir, url in URLS.items():
+for rir, rir_info in RIRS.items():
     x = []
     y = []
     for year in YEAR_RANGE:
         for month in range(1,13):
 
             roa_count = -1 # skip the header
-            csv = session.get(f'{url}/{year}/{month:02d}/15/roa.csv')
+            parsed_url = f'{rir_info["url"]}/{year}/{month:02d}/15/roas.csv'
+            csv = session.get( parsed_url )
             if csv.status_code != 200:
+                print(parsed_url)
+                print(csv.status_code)
                 continue
 
             for line in csv.iter_lines(decode_unicode=True):
@@ -36,8 +55,12 @@ for rir, url in URLS.items():
                 y.append( roa_count )
             
 
-            plt.plot(x, y, legend=rir)
+    plt.plot(x, y, label=rir, marker=rir_info['marker'])
 
 plt.grid( True )
+plt.legend()
+plt.ylabel('Number of ROAs')
+plt.xticks(rotation=45)
+plt.tight_layout()
 plt.savefig(f'roa_count_{YEAR_RANGE[0]}_{YEAR_RANGE[-1]}.png')
 plt.savefig(f'roa_count_{YEAR_RANGE[0]}_{YEAR_RANGE[-1]}.pdf')
